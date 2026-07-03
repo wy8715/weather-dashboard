@@ -7,9 +7,6 @@ dist/
 # 后端代码（前端不需要）
 server/
 
-# 部署配置（前端不需要）
-deploy/
-
 # 文档与图片
 docx/
 imgs/

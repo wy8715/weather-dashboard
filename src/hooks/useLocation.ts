@@ -10,12 +10,21 @@ import { useCityStore } from '../stores/cityStore';
 /** 定位等待超时时间（毫秒） */
 const LOCATION_TIMEOUT_MS = 2500;
 
+/** useLocation 返回值 */
+export interface UseLocationResult {
+  /** 是否正在定位中 */
+  isLocating: boolean;
+  /** 定位失败时的错误原因 */
+  locateError: string | null;
+}
+
 /**
  * 定位 Hook
  * @description 首次进入页面时优先尝试恢复缓存或解析浏览器位置，超时则回退默认城市
+ * @returns 定位状态对象，包含 isLocating 和 locateError
  */
-export function useLocation(): void {
-  const { restoreFromCache, setCity, setLocateFailed } = useCityStore();
+export function useLocation(): UseLocationResult {
+  const { restoreFromCache, setCity, isLocating, locateFailed, setLocateFailed } = useCityStore();
 
   useEffect(() => {
     let resolved = false;
@@ -86,4 +95,9 @@ export function useLocation(): void {
       window.clearTimeout(fallbackTimer);
     };
   }, [restoreFromCache, setCity, setLocateFailed]);
+
+  return {
+    isLocating,
+    locateError: locateFailed ? '浏览器定位失败或用户拒绝定位，已使用默认城市' : null,
+  };
 }

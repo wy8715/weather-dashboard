@@ -1,7 +1,7 @@
 /**
  * @component CityDrawer
  * @description 城市选择抽屉 - 城市搜索、定位城市、最近访问、热门城市
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-13
  * @updated 2026-06-13
  */

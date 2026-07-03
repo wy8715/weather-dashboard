@@ -1,7 +1,7 @@
 /**
  * @component Home
  * @description 主页面 - 按设计稿重建的城市环境与天气大屏首页
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-13
  * @updated 2026-06-19
  */

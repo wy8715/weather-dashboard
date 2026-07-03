@@ -1,7 +1,7 @@
 /**
  * @component DashboardChart
  * @description ECharts 通用图表容器，负责实例初始化、更新和自适应
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-13
  * @updated 2026-06-13
  */

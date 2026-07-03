@@ -1,7 +1,7 @@
 /**
  * @component Stats
  * @description 统计详情页，展示最近 10 天趋势、周月明细、天气类型占比与数据说明
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-13
  * @updated 2026-06-19
  */

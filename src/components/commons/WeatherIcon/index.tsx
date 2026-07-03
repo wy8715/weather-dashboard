@@ -1,7 +1,7 @@
 /**
  * @component WeatherIcon
  * @description 基于和风天气官方字体图标的统一渲染组件
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-13
  * @updated 2026-06-13
  */

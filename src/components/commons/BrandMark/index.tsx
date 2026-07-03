@@ -1,7 +1,7 @@
 /**
  * @component BrandMark
  * @description 品牌徽记图标组件，提供首页与统计页统一使用的站点标识
- * @author
+ * @author Weather Dashboard Team
  * @created 2026-06-19
  * @updated 2026-06-19
  */

@@ -33,10 +33,15 @@
 
 ```text
 weather-dashboard/
+├── .github/workflows/     # GitHub Actions CI/CD
+├── deploy/                # Nginx 前端配置
+├── docx/                  # 项目文档（PRD、部署文档）
 ├── imgs/                  # README 示例图
+├── public/                # 前端静态资源
 ├── scripts/               # 开发辅助脚本
 ├── server/                # Node.js + Express 后端
 │   ├── src/app
+│   ├── src/constants
 │   ├── src/controllers
 │   ├── src/db
 │   ├── src/integrations/qweather
@@ -54,6 +59,11 @@ weather-dashboard/
 │   ├── styles
 │   ├── types
 │   └── utils
+├── index.html
+├── vite.config.ts
+├── tsconfig.json
+├── Dockerfile
+├── docker-compose.yml
 ├── package.json
 └── README.md
 ```
@@ -214,6 +224,11 @@ Content-Type: application/json
 - 请求封装位于 `src/utils/request.ts`
 - 后端天气集成位于 `server/src/integrations/qweather`
 - SQLite 数据、缓存和统计逻辑位于 `server/src/db`、`server/src/repositories`、`server/src/services`
+
+## 项目文档
+
+- [PRD 与接口文档](./docx/城市环境与天气大屏-PRD与接口文档.md)
+- [部署运维文档](./docx/城市环境与天气大屏-部署文档.md)
 
 ## License
 

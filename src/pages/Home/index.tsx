@@ -458,6 +458,41 @@ function formatLunarDate(date: Date, timeZone: string): string {
 }
 
 /**
+ * 格式化时区显示文本（含动态 UTC 偏移）
+ * @param timeZone IANA 时区标识
+ * @returns 带偏移的时区描述，如 "Asia/Shanghai (UTC+08:00)"
+ */
+function formatTimezoneDisplay(timeZone: string): string {
+  try {
+    const now = new Date();
+    // 通过对比 UTC 时间和目标时区时间计算偏移量（分钟）
+    const utcTime = now.toLocaleString('en-US', { timeZone: 'UTC' });
+    const tzTime = now.toLocaleString('en-US', { timeZone });
+    const utcDate = new Date(utcTime);
+    const tzDate = new Date(tzTime);
+    const offsetMinutes = (tzDate.getTime() - utcDate.getTime()) / 60000;
+
+    if (!Number.isFinite(offsetMinutes)) {
+      return timeZone;
+    }
+
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absMinutes = Math.abs(offsetMinutes);
+    const hours = Math.floor(absMinutes / 60);
+    const minutes = absMinutes % 60;
+
+    if (minutes === 0) {
+      return `${timeZone} (UTC${sign}${String(hours).padStart(2, '0')}:00)`;
+    }
+
+    return `${timeZone} (UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')})`;
+  } catch {
+    // 时区无效时兜底返回原始值
+    return timeZone;
+  }
+}
+
+/**
  * 生成顶部时间信息
  * @param date 当前时间
  * @param timeZone 时区
@@ -1390,7 +1425,7 @@ function buildWeatherRatioOption(ratios: WeatherTypeRatio[]): EChartsOption {
     series: [
       {
         type: 'pie',
-        radius: ['58%', '78%'],
+        radius: ['48%', '78%'],
         center: ['50%', '50%'],
         data: ratios.map((item) => ({
           name: item.type,
@@ -1422,7 +1457,7 @@ function buildWeatherRatioOption(ratios: WeatherTypeRatio[]): EChartsOption {
               align: 'center',
               verticalAlign: 'middle',
               fill: '#f4e4c5',
-              font: '700 22px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+              font: '700 18px "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
             },
           },
           {
@@ -1937,7 +1972,15 @@ export default function Home(): JSX.Element {
                 <div className="weather-home__hero-main">
                   <div className="weather-home__hero-temp">
                     <span className="weather-home__hero-degree">
-                      {toNumber(homeData.overview.weatherNow.temp).toFixed(1)}
+                      <span className="weather-home__hero-degree-int">
+                        {Math.floor(toNumber(homeData.overview.weatherNow.temp))}
+                      </span>
+                      <span className="weather-home__hero-degree-decimal">
+                        .{(() => {
+                          const decimalPart = toNumber(homeData.overview.weatherNow.temp).toFixed(1).split('.')[1];
+                          return decimalPart || '0';
+                        })()}
+                      </span>
                     </span>
                     <span className="weather-home__hero-unit">°C</span>
                   </div>
@@ -2105,8 +2148,8 @@ export default function Home(): JSX.Element {
                     <div className="weather-home__index-copy">
                       <span>{item.name}</span>
                       <strong>{item.level}</strong>
-                      <em>{item.text}</em>
                     </div>
+                    <em>{item.text}</em>
                   </div>
                 ))}
               </div>
@@ -2269,7 +2312,7 @@ export default function Home(): JSX.Element {
 
         <footer className="weather-home__footer">
           <span>数据来源：和风天气</span>
-          <span>本地时间：{homeData.overview.location.tz} (UTC+08:00)</span>
+          <span>本地时间：{formatTimezoneDisplay(homeData.overview.location.tz)}</span>
           <span>免责声明：本页面数据仅供参考，不作为决策依据</span>
         </footer>
       </div>

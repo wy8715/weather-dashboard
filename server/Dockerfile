@@ -26,8 +26,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# better-sqlite3 运行时仍需这些库
-RUN apk add --no-cache python3 make g++
+# better-sqlite3 运行时仍需这些库，curl 用于健康检查
+RUN apk add --no-cache python3 make g++ curl
 
 # 复制 package 文件，只安装生产依赖
 COPY package.json package-lock.json ./
@@ -39,9 +39,9 @@ COPY --from=builder /app/dist ./dist
 # 创建数据目录（挂载点）
 RUN mkdir -p /app/data
 
-# 健康检查
+# 健康检查（Alpine busybox wget 不支持 --spider，必须用 curl）
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3201/ || exit 1
+  CMD curl -f http://localhost:3201/ || exit 1
 
 EXPOSE 3201
 

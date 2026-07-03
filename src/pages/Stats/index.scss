@@ -72,8 +72,8 @@
   }
 
   &__state-title {
-    font-size: 22px;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: 400;
     color: var(--stats-page-title);
   }
 
@@ -194,9 +194,9 @@
 
   &__brand-title {
     color: var(--stats-page-title);
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.08;
-    font-weight: 700;
+    font-weight: 400;
     letter-spacing: 0.04em;
   }
 
@@ -216,13 +216,12 @@
     strong {
       display: block;
       color: #f6e6c7;
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 400;
       line-height: 1.15;
     }
 
-    span,
-    em {
+    span {
       display: block;
       color: var(--stats-page-text-soft);
       font-size: 10px;
@@ -232,16 +231,23 @@
   }
 
   &__headline-card--city strong {
-    font-size: 15px;
+    font-size: 16px;
   }
 
   &__headline-card--time {
     align-items: flex-start;
   }
 
+  &__headline-card--aqi {
+    span {
+      color: #f6e6c7;
+      font-size: 12px;
+    }
+  }
+
   &__headline-card--aqi strong,
   &__headline-card--alert strong {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   &__headline-stack,
@@ -262,7 +268,7 @@
     em {
       font-size: 18px;
       color: #f4ead6;
-      font-weight: 700;
+      font-weight: 400;
       line-height: 1;
       font-variant-numeric: tabular-nums;
     }
@@ -317,17 +323,33 @@
 
   &__headline-value-line {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  &__headline-value-row {
+    display: flex;
     align-items: baseline;
     gap: 6px;
+    min-width: 0;
   }
 
   &__headline-badge {
-    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 18px;
+    padding: 3px 10px;
     border: 1px solid currentColor;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.04);
+    color: currentColor;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.4;
+    white-space: nowrap;
   }
 
   &__status {
@@ -350,7 +372,7 @@
     background: linear-gradient(180deg, rgba(14, 31, 44, 0.92), rgba(9, 21, 31, 0.88));
     color: #eef2f4;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     transition:
       transform 0.2s ease,
       border-color 0.2s ease,
@@ -448,8 +470,8 @@
     border-radius: 7px;
     background: linear-gradient(180deg, rgba(27, 62, 91, 0.98), rgba(10, 28, 42, 0.96));
     color: #f2c979;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 400;
     letter-spacing: 0.02em;
     box-shadow:
       inset 0 1px 0 rgba(255, 240, 205, 0.06),
@@ -497,7 +519,7 @@
     border: 1px solid transparent;
     border-radius: 8px;
     color: var(--stats-page-text);
-    font-size: 14px;
+    font-size: 15px;
     text-align: left;
     transition:
       background-color 0.2s ease,
@@ -537,7 +559,7 @@
 
   &__nav-label {
     color: inherit;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.2;
   }
 
@@ -578,8 +600,8 @@
     strong {
       display: block;
       color: #f4ead2;
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 400;
       line-height: 1.1;
     }
 
@@ -604,7 +626,7 @@
     background: linear-gradient(180deg, rgba(13, 30, 44, 0.94), rgba(9, 21, 31, 0.9));
     color: #dceef8;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: 0.02em;
 
     &::after {
@@ -643,8 +665,8 @@
 
   &__section-title {
     color: var(--stats-page-title);
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 400;
   }
 
   &__section-desc {
@@ -724,8 +746,8 @@
 
     h3 {
       color: var(--stats-page-title);
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: 400;
     }
 
     span {
@@ -783,7 +805,7 @@
     strong {
       color: #f4ead2;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 400;
       line-height: 1.2;
     }
   }
@@ -838,8 +860,8 @@
 
   &__ratio-name {
     color: #dfe9ef;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 400;
     line-height: 1.2;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -855,7 +877,7 @@
 
   &__ratio-percent {
     color: rgba(233, 239, 244, 0.88);
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 400;
     line-height: 1.2;
     font-variant-numeric: tabular-nums;
@@ -968,7 +990,7 @@
       color: #e6eef2;
       font-size: 13px;
       line-height: 1.6;
-      font-weight: 500;
+      font-weight: 400;
     }
   }
 

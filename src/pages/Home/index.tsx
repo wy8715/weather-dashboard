@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @component Home
  * @description 主页面 - 按设计稿重建的城市环境与天气大屏首页
  * @author Weather Dashboard Team
@@ -110,7 +110,7 @@ interface DisplayHighlightSummary {
 /** 天气类型占比卡片配色 */
 const WEATHER_RATIO_COLORS = ['#f2b338', '#72cbd2', '#8e9ba3', '#4f9bc7', '#7acb88'];
 
-/** 寮圭獥鍙仛鐒︾殑鍏冪礌閫夋嫨鍣?*/
+/** 弹窗内可聚焦的元素选择器 */
 const MODAL_FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -121,9 +121,9 @@ const MODAL_FOCUSABLE_SELECTOR = [
 ].join(', ');
 
 /**
- * 鑾峰彇寮圭獥鍐呭彲鑱氱劍鍏冪礌
- * @param container 瀹瑰櫒鍏冪礌锛屽繀濉紝榛樿鍊硷細鏃?
- * @returns 鍙仛鐒︾殑鍏冪礌鍒楄〃
+ * 获取弹窗内可聚焦元素
+ * @param container 容器元素，必填，默认值：无
+ * @returns 可聚焦的元素列表
  */
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)).filter(
@@ -1732,22 +1732,26 @@ export default function Home(): JSX.Element {
           </div>
 
           <div className="weather-home__headline-card weather-home__headline-card--weather">
-            <WeatherIcon
-              code={homeData.overview.weatherNow.icon}
-              className="weather-home__headline-weather-icon"
-              label={homeData.overview.weatherNow.text}
-            />
             <div className="weather-home__headline-stack">
               <span>天气摘要</span>
-              <strong>{homeData.overview.weatherNow.text}</strong>
+              <div className="weather-home__headline-value-row">
+                <WeatherIcon
+                  code={homeData.overview.weatherNow.icon}
+                  className="weather-home__headline-weather-icon"
+                  label={homeData.overview.weatherNow.text}
+                />
+                <strong>{homeData.overview.weatherNow.text}</strong>
+              </div>
             </div>
           </div>
 
           <div className="weather-home__headline-card weather-home__headline-card--aqi">
             <div className="weather-home__headline-stack">
-              <span>AQI</span>
               <div className="weather-home__headline-value-line">
-                <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
+                <div className="weather-home__headline-value-row">
+                  <span>AQI</span>
+                  <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
+                </div>
                 <em
                   className="weather-home__headline-badge"
                   style={aqiBadgeStyle}

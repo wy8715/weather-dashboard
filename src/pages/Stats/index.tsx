@@ -1581,9 +1581,11 @@ export default function Stats(): JSX.Element {
 
           <div className="stats-page__headline-card stats-page__headline-card--aqi">
             <div className="stats-page__headline-stack">
-              <span>AQI</span>
               <div className="stats-page__headline-value-line">
-                <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
+                <div className="stats-page__headline-value-row">
+                  <span>AQI</span>
+                  <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
+                </div>
                 <em className="stats-page__headline-badge" style={{ color: aqiColor }}>
                   {homeData.airNow.category}
                 </em>

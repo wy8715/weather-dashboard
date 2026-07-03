@@ -13,7 +13,8 @@ services:
     image: weather-frontend:latest
     container_name: weather-frontend
     ports:
-      - "80:80"
+      # 不占用 80：由宿主 Nginx 代理到本端口
+      - "8080:80"
     depends_on:
       backend:
         condition: service_healthy

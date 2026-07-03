@@ -11,10 +11,10 @@ import type { CSSProperties } from 'react';
 import type { EChartsOption } from 'echarts';
 import { useLocation as useRouterLocation, useNavigate } from 'react-router-dom';
 import cityPreviewImage from '../../assets/bg.png';
-import { BrandMark } from '../../components/commons/BrandMark';
 import { DashboardChart } from '../../components/commons/DashboardChart';
 import { WeatherIcon } from '../../components/commons/WeatherIcon';
-import { AQI_CATEGORY_COLORS } from '../../constants';
+import { DashboardTopBar } from '../../components/business/DashboardTopBar';
+import { AQI_CATEGORY_COLORS, SEVERITY_COLORS } from '../../constants';
 import { useCityStore } from '../../stores/cityStore';
 import type {
   DailyStatsRecord,
@@ -249,6 +249,25 @@ function renderSidebarIcon(sectionId: SectionId): JSX.Element {
     default:
       return <></>;
   }
+}
+
+/**
+ * 将十六进制颜色转换为 CSS 变量可使用的 RGB 字符串
+ * @param hexColor 十六进制颜色值，必填，默认值无
+ * @returns RGB 字符串，如 "136, 176, 75"
+ */
+function toCssRgbValue(hexColor: string): string {
+  const normalizedColor = hexColor.replace('#', '');
+
+  if (!/^[0-9a-fA-F]{6}$/.test(normalizedColor)) {
+    return '136, 176, 75';
+  }
+
+  const r = parseInt(normalizedColor.slice(0, 2), 16);
+  const g = parseInt(normalizedColor.slice(2, 4), 16);
+  const b = parseInt(normalizedColor.slice(4, 6), 16);
+
+  return `${r}, ${g}, ${b}`;
 }
 
 /**
@@ -963,16 +982,25 @@ function buildAqiOption(records: TrendChartRecord[]): EChartsOption {
         return [axisLabel, ...lines].join('<br />');
       },
     },
-    legend: {
+    visualMap: {
+      show: true,
       top: 0,
       right: 0,
+      orient: 'horizontal',
       itemWidth: 12,
-      itemHeight: 6,
+      itemHeight: 8,
       textStyle: {
         color: '#8ea6b3',
-        fontSize: 11,
+        fontSize: 10,
       },
-      data: ['AQI'],
+      pieces: [
+        { min: 0, max: 50, label: '优', color: '#2f8f53' },
+        { min: 51, max: 100, label: '良', color: '#b8ad43' },
+        { min: 101, max: 150, label: '轻度', color: '#d48746' },
+        { min: 151, max: 200, label: '中度', color: '#b75343' },
+        { min: 201, max: 300, label: '重度', color: '#87353f' },
+        { min: 301, label: '严重', color: '#6b2f3e' },
+      ],
     },
     grid: {
       top: 34,
@@ -1096,7 +1124,7 @@ function buildWeatherRatioOption(ratios: WeatherTypeRatio[]): EChartsOption {
     series: [
       {
         type: 'pie',
-        radius: ['64%', '82%'],
+        radius: ['50%', '82%'],
         center: ['50%', '50%'],
         avoidLabelOverlap: true,
         label: {
@@ -1192,6 +1220,41 @@ function getAqiColor(category: string, aqiValue?: string): string {
   }
 
   return AQI_CATEGORY_COLORS['严重污染'];
+}
+
+/**
+ * 根据 AQI 数值获取空气质量等级文本
+ * @param aqiValue AQI 数值，必填，默认值：无
+ * @returns 空气质量等级文本（优/良/轻度/中度/重度/严重）
+ */
+function getAqiLevelText(aqiValue: string | number): string {
+  const numericValue = typeof aqiValue === 'string' ? toNumber(aqiValue) : aqiValue;
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return '--';
+  }
+
+  if (numericValue <= 50) {
+    return '优';
+  }
+
+  if (numericValue <= 100) {
+    return '良';
+  }
+
+  if (numericValue <= 150) {
+    return '轻度';
+  }
+
+  if (numericValue <= 200) {
+    return '中度';
+  }
+
+  if (numericValue <= 300) {
+    return '重度';
+  }
+
+  return '严重';
 }
 
 /**
@@ -1427,6 +1490,26 @@ export default function Stats(): JSX.Element {
 
   const hasAlert = Boolean(homeData?.overview.alertSummary.hasAlert);
 
+  const alertColor = useMemo(() => {
+    const severity = homeData?.overview.alertSummary.highestSeverity;
+    if (severity && SEVERITY_COLORS[severity]) {
+      return SEVERITY_COLORS[severity];
+    }
+    return '#8fd15b';
+  }, [homeData?.overview.alertSummary.highestSeverity]);
+
+  const alertText = useMemo(() => {
+    if (!homeData) {
+      return '无预警';
+    }
+    if (!homeData.overview.alertSummary.hasAlert) {
+      return '无预警';
+    }
+    return homeData.overview.alertSummary.highestSeverity
+      ? `${homeData.overview.alertSummary.highestSeverity}预警`
+      : `有预警`;
+  }, [homeData]);
+
   const scrollToSection = useCallback(
     (sectionId: SectionId) => {
       const targetElement = getSectionElement(sectionId);
@@ -1528,93 +1611,19 @@ export default function Stats(): JSX.Element {
   return (
     <div className="stats-page">
       <div className="stats-page__shell">
-        <header className="stats-page__topbar">
-          <div className="stats-page__brand">
-            <BrandMark className="stats-page__brand-mark" />
-            <div className="stats-page__brand-copy">
-              <h1 className="stats-page__brand-title">城市环境与天气大屏</h1>
-              <span className="stats-page__brand-subtitle">STORM LEDGER</span>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card stats-page__headline-card--city">
-            <span className="stats-page__headline-pin" aria-hidden="true" />
-            <div className="stats-page__headline-stack">
-              <strong>{cityName}</strong>
-              <span>
-                {homeData.overview.location.adm1} {homeData.overview.location.adm2}
-              </span>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card stats-page__headline-card--time">
-            <div className="stats-page__headline-time">
-              <strong>{currentTimeMeta.dateText}</strong>
-              <em>{currentTimeMeta.timeText}</em>
-            </div>
-            <div className="stats-page__headline-meta">
-              <span>{currentTimeMeta.weekText}</span>
-              <span>{currentTimeMeta.lunarText}</span>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card">
-            <div className="stats-page__headline-stack">
-              <span>数据更新时间</span>
-              <strong>{homeData.overview.weatherNow.obsTime ? homeData.overview.weatherNow.obsTime.slice(11, 16) : '--:--'}</strong>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card stats-page__headline-card--weather">
-            <WeatherIcon
-              code={homeData.overview.weatherNow.icon}
-              className="stats-page__headline-weather-icon"
-              label={homeData.overview.weatherNow.text}
-            />
-            <div className="stats-page__headline-stack">
-              <span>当前天气</span>
-              <strong>
-                {homeData.overview.weatherNow.text} {homeData.overview.weatherNow.temp}°C
-              </strong>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card stats-page__headline-card--aqi">
-            <div className="stats-page__headline-stack">
-              <div className="stats-page__headline-value-line">
-                <div className="stats-page__headline-value-row">
-                  <span>AQI</span>
-                  <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
-                </div>
-                <em className="stats-page__headline-badge" style={{ color: aqiColor }}>
-                  {homeData.airNow.category}
-                </em>
-              </div>
-            </div>
-          </div>
-
-          <div className="stats-page__headline-card stats-page__headline-card--alert">
-            <div className="stats-page__headline-stack">
-              <span>预警状态</span>
-              <strong className={hasAlert ? 'stats-page__status stats-page__status--warning' : 'stats-page__status'}>
-                {hasAlert
-                  ? homeData.overview.alertSummary.highestSeverity
-                    ? `${homeData.overview.alertSummary.highestSeverity}预警`
-                    : `${homeData.overview.alertSummary.count}条预警`
-                  : '无预警'}
-              </strong>
-            </div>
-          </div>
-
-          <button
-            className="stats-page__back-button"
-            onClick={() => navigate('/')}
-            type="button"
-          >
-            <span aria-hidden="true">←</span>
-            返回大屏
-          </button>
-        </header>
+        <DashboardTopBar
+          mode="stats"
+          homeData={homeData}
+          timeMeta={currentTimeMeta}
+          aqiColor={aqiColor}
+          aqiBadgeCssVar={toCssRgbValue(aqiColor)}
+          hasAlert={hasAlert}
+          alertIconCssVar={toCssRgbValue(alertColor)}
+          alertText={alertText}
+          updateTime={homeData.overview.weatherNow.obsTime?.slice(11, 16) || '--:--'}
+          cityName={cityName}
+          onBackClick={() => navigate('/')}
+        />
 
         <div className="stats-page__layout">
           <aside className="stats-page__sidebar">
@@ -1826,7 +1835,7 @@ export default function Stats(): JSX.Element {
                 <div className="stats-page__panel-head">
                   <h3>周统计明细</h3>
                   <span>
-                    {statsDetail.weeklyStats.weekStart} ~ {statsDetail.weeklyStats.weekEnd}
+                    （自然周：周一~周日） · {statsDetail.weeklyStats.weekStart} ~ {statsDetail.weeklyStats.weekEnd}
                   </span>
                 </div>
 
@@ -1869,7 +1878,12 @@ export default function Stats(): JSX.Element {
                       </div>
                       <div className="stats-page__table-cell">
                         <span className="stats-page__table-cell-label">AQI</span>
-                        <span className="stats-page__table-cell-value">{item.aqiAvg}</span>
+                        <span className="stats-page__table-value-aqi">
+                          {item.aqiAvg}
+                          <em style={{ color: getAqiColor(getAqiLevelText(item.aqiAvg), item.aqiAvg) }}>
+                            {getAqiLevelText(item.aqiAvg)}
+                          </em>
+                        </span>
                       </div>
                       <div className="stats-page__table-cell">
                         <span className="stats-page__table-cell-label">天气概况</span>
@@ -1879,6 +1893,7 @@ export default function Stats(): JSX.Element {
                       </div>
                     </div>
                   ))}
+                  <p className="stats-page__table-footnote">* 本表为当前运行周期，数据持续更新中</p>
                 </div>
               </section>
 
@@ -1890,7 +1905,7 @@ export default function Stats(): JSX.Element {
               >
                 <div className="stats-page__panel-head">
                   <h3>月统计明细</h3>
-                  <span>{statsDetail.monthlyStats.month}</span>
+                  <span>（按自然月） · {statsDetail.monthlyStats.month}</span>
                 </div>
 
                 <div className="stats-page__table">
@@ -1930,7 +1945,12 @@ export default function Stats(): JSX.Element {
                       </div>
                       <div className="stats-page__table-cell">
                         <span className="stats-page__table-cell-label">AQI</span>
-                        <span className="stats-page__table-cell-value">{item.aqiAvg}</span>
+                        <span className="stats-page__table-value-aqi">
+                          {item.aqiAvg}
+                          <em style={{ color: getAqiColor(getAqiLevelText(item.aqiAvg), item.aqiAvg) }}>
+                            {getAqiLevelText(item.aqiAvg)}
+                          </em>
+                        </span>
                       </div>
                       <div className="stats-page__table-cell">
                         <span className="stats-page__table-cell-label">样本说明</span>
@@ -1938,6 +1958,7 @@ export default function Stats(): JSX.Element {
                       </div>
                     </div>
                   ))}
+                  <p className="stats-page__table-footnote">* 本表为当前运行周期，数据持续更新中</p>
                 </div>
               </section>
 
@@ -1959,6 +1980,9 @@ export default function Stats(): JSX.Element {
                       <strong>{item.value}</strong>
                     </div>
                   ))}
+                  <p className="stats-page__notes-disclaimer">
+                    * 当月统计按截至最新采样日展示，非完整自然月
+                  </p>
                 </div>
               </section>
             </div>

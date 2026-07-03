@@ -10,10 +10,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { EChartsOption } from 'echarts';
 import { useNavigate } from 'react-router-dom';
-import { BrandMark } from '../../components/commons/BrandMark';
 import { DashboardChart } from '../../components/commons/DashboardChart';
 import { WeatherIcon } from '../../components/commons/WeatherIcon';
 import { CityDrawer } from '../../components/business/CityDrawer';
+import { DashboardTopBar } from '../../components/business/DashboardTopBar';
 import { AQI_CATEGORY_COLORS, SEVERITY_COLORS } from '../../constants';
 import { useHomeData } from '../../hooks/useHomeData';
 import { useLocation } from '../../hooks/useLocation';
@@ -1714,155 +1714,32 @@ export default function Home(): JSX.Element {
     : '';
   const aqiColor = AQI_CATEGORY_COLORS[homeData.airNow.category] || '#88B04B';
   const airLevelLabel = homeData.airNow.category || homeData.airNow.level || '未知';
-  const aqiBadgeStyle = {
-    '--weather-home-headline-badge-rgb': toCssRgbValue(aqiColor),
-  } as CSSProperties;
   const hasAlert = homeData.overview.alertSummary.hasAlert;
   const alertColor = homeData.overview.alertSummary.highestSeverity
     ? SEVERITY_COLORS[homeData.overview.alertSummary.highestSeverity] || '#8fd15b'
     : '#8fd15b';
-  const alertIconStyle = {
-    '--weather-home-headline-alert-rgb': toCssRgbValue(alertColor),
-  } as CSSProperties;
 
   return (
     <div className="weather-home">
       <div aria-hidden={alertModalOpen} className="weather-home__shell">
-        <header className="weather-home__topbar">
-          <div className="weather-home__brand">
-            <BrandMark className="weather-home__brand-mark" />
-            <div className="weather-home__brand-copy">
-              <h1 className="weather-home__brand-title">城市环境与天气大屏</h1>
-              <span className="weather-home__brand-subtitle">STORM LEDGER</span>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--city">
-            <span className="weather-home__headline-pin" aria-hidden="true" />
-            <div className="weather-home__headline-copy">
-              <strong>{homeData.overview.location.name}市</strong>
-              <span>{homeData.overview.location.adm1} {homeData.overview.location.adm2}</span>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--time">
-            <div className="weather-home__headline-time-block">
-              <div className="weather-home__headline-time-row">
-                <strong>
-                  {viewModel.timeMeta.dateText} {viewModel.timeMeta.timeText}
-                </strong>
-              </div>
-              <div className="weather-home__headline-time-meta">
-                <span>{viewModel.timeMeta.weekText}</span>
-                <em>{viewModel.timeMeta.lunarText}</em>
-              </div>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--updated">
-            <div className="weather-home__headline-stack">
-              <span>数据更新时间</span>
-              <strong>{formatTime(homeData.overview.weatherNow.obsTime)}</strong>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--weather">
-            <div className="weather-home__headline-stack">
-              <span>天气摘要</span>
-              <div className="weather-home__headline-value-row">
-                <WeatherIcon
-                  code={homeData.overview.weatherNow.icon}
-                  className="weather-home__headline-weather-icon"
-                  label={homeData.overview.weatherNow.text}
-                />
-                <strong>{homeData.overview.weatherNow.text}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--aqi">
-            <div className="weather-home__headline-stack">
-              <div className="weather-home__headline-value-line">
-                <div className="weather-home__headline-value-row">
-                  <span>AQI</span>
-                  <strong style={{ color: aqiColor }}>{homeData.airNow.aqi}</strong>
-                </div>
-                <em
-                  className="weather-home__headline-badge"
-                  style={aqiBadgeStyle}
-                >
-                  {homeData.airNow.category}
-                </em>
-              </div>
-            </div>
-          </div>
-
-          <div className="weather-home__headline-card weather-home__headline-card--alert">
-            <div className="weather-home__headline-stack weather-home__headline-stack--alert">
-              <span>预警状态</span>
-              <div
-                className={`weather-home__headline-status weather-home__headline-status--${hasAlert ? 'warning' : 'safe'}`}
-                style={alertIconStyle}
-              >
-                <span className="weather-home__headline-status-icon" aria-hidden="true">
-                  {hasAlert ? (
-                    <svg viewBox="0 0 16 18" focusable="false">
-                      <path
-                        d="M8 1.5 13 3.2v4.6c0 3.1-1.85 5.93-5 7.8-3.15-1.87-5-4.7-5-7.8V3.2L8 1.5Z"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M8 5.1v4.4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                      />
-                      <circle cx="8" cy="12.25" r="1" fill="currentColor" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 16 18" focusable="false">
-                      <path
-                        d="M8 1.5 13 3.2v4.6c0 3.1-1.85 5.93-5 7.8-3.15-1.87-5-4.7-5-7.8V3.2L8 1.5Z"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="m5.2 8.9 1.9 1.9 3.7-4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.7"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </span>
-                <strong>
-                  {hasAlert
-                    ? homeData.overview.alertSummary.highestSeverity
-                      ? `${homeData.overview.alertSummary.highestSeverity}预警`
-                      : '有预警'
-                    : '无预警'}
-                </strong>
-              </div>
-            </div>
-          </div>
-
-          <button
-            className="weather-home__city-action"
-            onClick={() => setDrawerOpen(true)}
-            type="button"
-          >
-            <span>城市选择</span>
-            <strong aria-hidden="true" />
-          </button>
-        </header>
+        <DashboardTopBar
+          mode="home"
+          homeData={homeData}
+          timeMeta={viewModel.timeMeta}
+          aqiColor={aqiColor}
+          aqiBadgeCssVar={toCssRgbValue(aqiColor)}
+          hasAlert={hasAlert}
+          alertIconCssVar={toCssRgbValue(alertColor)}
+          alertText={
+            hasAlert
+              ? homeData.overview.alertSummary.highestSeverity
+                ? `${homeData.overview.alertSummary.highestSeverity}预警`
+                : '有预警'
+              : '无预警'
+          }
+          updateTime={formatTime(homeData.overview.weatherNow.obsTime)}
+          onDrawerOpen={() => setDrawerOpen(true)}
+        />
 
         <main className="weather-home__layout">
           <aside className="weather-home__sidebar weather-home__sidebar--left">

@@ -1,0 +1,150 @@
+# ============================================================
+# GitHub Actions Docker 自动部署 - City Weather Dashboard
+# 触发条件：推送到 main 分支
+# 流程：构建 Docker 镜像 → 导出 tar → SCP 上传 → ECS 加载并启动
+# ECS 只需 Docker Engine，无需 Node.js / npm / 编译工具链
+# ============================================================
+
+name: Docker Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: 构建并部署到阿里云 ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # ==================== 构建 Docker 镜像 ====================
+      - name: 构建后端镜像
+        run: |
+          docker build \
+            -t weather-backend:latest \
+            -f server/Dockerfile \
+            ./server
+
+      - name: 构建前端镜像
+        run: |
+          docker build \
+            -t weather-frontend:latest \
+            -f Dockerfile \
+            .
+
+      # ==================== 导出镜像为 tar ====================
+      - name: 导出镜像
+        run: |
+          docker save weather-backend:latest -o /tmp/weather-backend.tar
+          docker save weather-frontend:latest -o /tmp/weather-frontend.tar
+          # 压缩以减小传输体积
+          gzip /tmp/weather-backend.tar
+          gzip /tmp/weather-frontend.tar
+
+      - name: 准备部署文件包
+        run: |
+          # 打包 docker-compose 和环境配置
+          tar -czf /tmp/deploy-configs.tar.gz \
+            docker-compose.yml \
+            .env.docker
+
+      # ==================== SSH 配置 ====================
+      - name: 配置 SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.ECS_SSH_PRIVATE_KEY }}
+
+      - name: 添加 ECS 到 known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.ECS_HOST }} >> ~/.ssh/known_hosts
+
+      # ==================== 上传到 ECS ====================
+      - name: 上传镜像与配置到 ECS
+        run: |
+          scp /tmp/weather-backend.tar.gz \
+              /tmp/weather-frontend.tar.gz \
+              /tmp/deploy-configs.tar.gz \
+              ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }}:/tmp/
+
+      # ==================== ECS 端部署 ====================
+      - name: 在 ECS 上加载镜像并启动服务
+        run: |
+          ssh ${{ secrets.ECS_USER }}@${{ secrets.ECS_HOST }} << 'DEPLOY_SCRIPT'
+
+          set -e
+
+          APP_DIR="/var/www/weather"
+          echo "[INFO] 开始 Docker 部署..."
+
+          # 创建部署目录
+          mkdir -p "${APP_DIR}"
+
+          # 解压配置文件
+          tar -xzf /tmp/deploy-configs.tar.gz -C "${APP_DIR}"
+
+          # 创建生产环境 .env（敏感信息从 GitHub Secrets 注入）
+          # 先写入 Secrets 变量为 shell 变量，避免 heredoc 中特殊字符被 Bash 解析
+          _QWEATHER_KEY='${{ secrets.QWEATHER_API_KEY }}'
+          _QWEATHER_HOST='${{ secrets.QWEATHER_API_HOST }}'
+          _LOCATION_ID='${{ secrets.DEFAULT_LOCATION_ID }}'
+          _CITY_NAME='${{ secrets.DEFAULT_CITY_NAME }}'
+          cat > "${APP_DIR}/.env" << 'ENVEOF'
+          QWEATHER_API_KEY=${_QWEATHER_KEY}
+          QWEATHER_API_HOST=${_QWEATHER_HOST}
+          DEFAULT_LOCATION_ID=${_LOCATION_ID}
+          DEFAULT_CITY_NAME=${_CITY_NAME}
+          LOG_LEVEL=info
+          SNAPSHOT_RETENTION_DAYS=90
+          ENVEOF
+
+          # 加载 Docker 镜像
+          echo "[INFO] 加载后端镜像..."
+          gunzip -c /tmp/weather-backend.tar.gz | docker load
+
+          echo "[INFO] 加载前端镜像..."
+          gunzip -c /tmp/weather-frontend.tar.gz | docker load
+
+          # 清理上传的临时文件
+          rm -f /tmp/weather-backend.tar.gz \
+                /tmp/weather-frontend.tar.gz \
+                /tmp/deploy-configs.tar.gz
+
+          # 切换到部署目录
+          cd "${APP_DIR}"
+
+          # 停止旧容器
+          echo "[INFO] 停止旧容器..."
+          docker compose down --remove-orphans 2>/dev/null || true
+
+          # 启动新容器（镜像已加载到本地，不会重新构建）
+          echo "[INFO] 启动服务..."
+          docker compose up -d --env-file .env
+
+          # 等待服务就绪
+          sleep 5
+
+          # 健康检查
+          echo "[INFO] 检查服务状态..."
+          docker compose ps
+
+          # 清理无用的旧镜像（保留最近 1 个版本）
+          echo "[INFO] 清理旧镜像..."
+          docker image prune -f --filter "until=24h"
+
+          echo "[INFO] 部署完成！"
+          DEPLOY_SCRIPT
+
+      - name: 部署结果通知
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ 部署成功，访问 http://${{ secrets.ECS_HOST }}"
+          else
+            echo "❌ 部署失败，请查看 Actions 日志"
+          fi

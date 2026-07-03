@@ -1,0 +1,21 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+
+# 数据库文件（通过 volume 挂载，不入镜像）
+data/
+
+# 测试
+__tests__/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+
+# 环境变量模板
+.env.example

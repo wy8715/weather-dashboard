@@ -21,10 +21,14 @@ const app = express();
 
 // ==================== 中间件 ====================
 
-/** CORS 跨域配置 */
+/** CORS 跨域配置 — 从环境变量读取允许的源，生产环境用 Nginx 反代时可配空数组 */
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+  : ['http://localhost:3200', 'http://127.0.0.1:3200'];
+
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
     credentials: true,
   })
 );

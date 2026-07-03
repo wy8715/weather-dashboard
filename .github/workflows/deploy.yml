@@ -122,9 +122,9 @@ jobs:
           echo "[INFO] 停止旧容器..."
           docker compose down --remove-orphans 2>/dev/null || true
 
-          # 启动新容器（镜像已加载到本地，不会重新构建）
+          # 启动新容器（.env 在当前目录下，docker-compose 默认读取）
           echo "[INFO] 启动服务..."
-          docker compose up -d --env-file .env
+          docker compose up -d
 
           # 等待服务就绪
           sleep 5

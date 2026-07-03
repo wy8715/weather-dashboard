@@ -119,6 +119,11 @@ jobs:
           echo "[INFO] 停止旧容器..."
           docker compose down --remove-orphans 2>/dev/null || true
 
+          # 释放 80 端口（可能被旧 Nginx / 残留进程占用）
+          echo "[INFO] 释放 80 端口..."
+          sudo fuser -k 80/tcp 2>/dev/null || true
+          sleep 1
+
           # 启动新容器（.env 在当前目录下，docker-compose 默认读取）
           echo "[INFO] 启动服务..."
           docker compose up -d

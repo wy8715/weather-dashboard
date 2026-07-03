@@ -89,19 +89,16 @@ jobs:
           tar -xzf /tmp/deploy-configs.tar.gz -C "${APP_DIR}"
 
           # 创建生产环境 .env（敏感信息从 GitHub Secrets 注入）
-          # 先写入 Secrets 变量为 shell 变量，避免 heredoc 中特殊字符被 Bash 解析
-          _QWEATHER_KEY='${{ secrets.QWEATHER_API_KEY }}'
-          _QWEATHER_HOST='${{ secrets.QWEATHER_API_HOST }}'
-          _LOCATION_ID='${{ secrets.DEFAULT_LOCATION_ID }}'
-          _CITY_NAME='${{ secrets.DEFAULT_CITY_NAME }}'
-          cat > "${APP_DIR}/.env" << 'ENVEOF'
-          QWEATHER_API_KEY=${_QWEATHER_KEY}
-          QWEATHER_API_HOST=${_QWEATHER_HOST}
-          DEFAULT_LOCATION_ID=${_LOCATION_ID}
-          DEFAULT_CITY_NAME=${_CITY_NAME}
-          LOG_LEVEL=info
-          SNAPSHOT_RETENTION_DAYS=90
-          ENVEOF
+          # 使用 printf 逐行写入，避免 heredoc 变量展开问题和特殊字符转义问题
+          printf 'QWEATHER_API_KEY=%s\n' '${{ secrets.QWEATHER_API_KEY }}' > "${APP_DIR}/.env"
+          printf 'QWEATHER_API_HOST=%s\n' '${{ secrets.QWEATHER_API_HOST }}' >> "${APP_DIR}/.env"
+          printf 'DEFAULT_LOCATION_ID=%s\n' '${{ secrets.DEFAULT_LOCATION_ID }}' >> "${APP_DIR}/.env"
+          printf 'DEFAULT_CITY_NAME=%s\n' '${{ secrets.DEFAULT_CITY_NAME }}' >> "${APP_DIR}/.env"
+          printf 'LOG_LEVEL=%s\n' 'info' >> "${APP_DIR}/.env"
+          printf 'SNAPSHOT_RETENTION_DAYS=%s\n' '90' >> "${APP_DIR}/.env"
+          echo "[INFO] .env 已生成："
+          # 脱敏打印确认（只显示变量名，不显示值）
+          grep -o '^[^=]*=' "${APP_DIR}/.env"
 
           # 加载 Docker 镜像
           echo "[INFO] 加载后端镜像..."
@@ -132,6 +129,12 @@ jobs:
           # 健康检查
           echo "[INFO] 检查服务状态..."
           docker compose ps
+
+          # 如果后端异常，打印日志辅助排查
+          if ! docker inspect weather-backend --format '{{.State.Health.Status}}' | grep -q 'healthy'; then
+            echo "[WARN] 后端健康检查失败，最近日志："
+            docker logs weather-backend --tail 30
+          fi
 
           # 清理无用的旧镜像（保留最近 1 个版本）
           echo "[INFO] 清理旧镜像..."

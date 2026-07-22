@@ -2,6 +2,7 @@
 
 `City Weather Dashboard` 是一个面向单城市场景的天气与环境可视化项目，采用前后端分离架构，聚合和风天气数据，提供实时天气、分钟级降水、24 小时趋势、7 天天气预报、空气质量、灾害预警、生活指数，以及周/月统计分析能力。
 
+
 ## 项目定位
 
 - 前端：`React + Vite + TypeScript + React Router + Zustand + ECharts + SCSS`

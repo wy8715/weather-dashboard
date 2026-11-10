@@ -21,6 +21,7 @@ import { getWeeklyStats, getMonthlyStats, getStatsDetail } from '../services/sta
 import { getCityInfo } from '../services/cityService';
 import { success, error } from '../utils/response';
 import { parseLocationId } from '../utils/validation';
+import { DAILY_RANGE_OPTIONS } from '../constants';
 import { ErrorCodes } from '../types';
 import { logger } from '../utils/logger';
 import type {
@@ -446,6 +447,7 @@ export async function minutely(req: Request, res: Response): Promise<void> {
 /**
  * 7 天预报
  * GET /api/screen/daily?locationId=xxx&days=7
+ * @description days 仅支持和风天气提供的固定区间：7、10、15、30
  */
 export async function daily(req: Request, res: Response): Promise<void> {
   const locationId = req.query.locationId as string | undefined;
@@ -455,7 +457,14 @@ export async function daily(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const days = parseInt(req.query.days as string, 10) || 7;
+  const rawDays = req.query.days;
+  const parsedDays = typeof rawDays === 'string' ? Number.parseInt(rawDays, 10) : 7;
+  const days = Number.isNaN(parsedDays) ? 7 : parsedDays;
+
+  if (!DAILY_RANGE_OPTIONS.includes(days)) {
+    res.json(error(ErrorCodes.INVALID_PARAMS, '预报天数仅支持 7、10、15 或 30 天'));
+    return;
+  }
 
   try {
     const list = await getDailyWeather(validation.value!, days);

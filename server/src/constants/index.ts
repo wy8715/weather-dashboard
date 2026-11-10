@@ -28,5 +28,8 @@ export const CACHE_TTL = {
 /** 默认分页大小 */
 export const DEFAULT_PAGE_SIZE = 20;
 
+/** 和风天气逐日预报支持的固定天数区间 */
+export const DAILY_RANGE_OPTIONS: readonly number[] = [7, 10, 15, 30];
+
 /** AQI 采样最低完整度阈值（75%） */
 export const MIN_SAMPLE_COMPLETENESS = 0.75;

@@ -14,6 +14,7 @@ import { DashboardChart } from '../../components/commons/DashboardChart';
 import { WeatherIcon } from '../../components/commons/WeatherIcon';
 import { CityDrawer } from '../../components/business/CityDrawer';
 import { DashboardTopBar } from '../../components/business/DashboardTopBar';
+import { ForecastDetailModal } from '../../components/business/ForecastDetailModal';
 import { AQI_CATEGORY_COLORS, SEVERITY_COLORS } from '../../constants';
 import { useHomeData } from '../../hooks/useHomeData';
 import { useLocation } from '../../hooks/useLocation';
@@ -1673,6 +1674,8 @@ export default function Home(): JSX.Element {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
+  // 多日预报曲线弹窗天数，null 表示关闭
+  const [forecastDetailDays, setForecastDetailDays] = useState<number | null>(null);
   const [now, setNow] = useState(() => new Date());
   const alertTriggerRef = useRef<HTMLButtonElement | null>(null);
   const alertModalRef = useRef<HTMLDivElement | null>(null);
@@ -1922,6 +1925,18 @@ export default function Home(): JSX.Element {
             <section className="weather-home__panel weather-home__panel--forecast">
               <div className="weather-home__panel-head">
                 <h2>7 天天气预报</h2>
+                <div className="weather-home__forecast-actions">
+                  {[10, 15, 30].map((days) => (
+                    <button
+                      className="weather-home__forecast-action"
+                      key={days}
+                      onClick={() => setForecastDetailDays(days)}
+                      type="button"
+                    >
+                      {days}d
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="weather-home__forecast-table">
@@ -2335,6 +2350,13 @@ export default function Home(): JSX.Element {
       </div>
 
       <CityDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      <ForecastDetailModal
+        days={forecastDetailDays ?? 7}
+        locationId={homeData.overview.location.id}
+        onClose={() => setForecastDetailDays(null)}
+        open={forecastDetailDays !== null}
+      />
     </div>
   );
 }

@@ -12,7 +12,7 @@ WORKDIR /app
 # better-sqlite3 是 C++ 原生模块，需要编译工具链
 RUN apk add --no-cache python3 make g++
 
-# 复制依赖文件并安装
+# 复制依赖文件并安装（含开发依赖，用于编译 TypeScript）
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -21,20 +21,22 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+# 清理开发依赖，仅保留生产依赖
+# 原生模块已在本阶段编译完成，直接供运行阶段复用，避免运行阶段再次联网下载
+RUN npm prune --omit=dev
+
 # ---------- 阶段二：运行 ----------
 FROM node:20-alpine
 
 WORKDIR /app
 
-# better-sqlite3 运行时仍需这些库，curl 用于健康检查
-RUN apk add --no-cache python3 make g++ curl
+# 运行时仅需 curl 用于健康检查，原生模块已在构建阶段编译完成，无需再装编译工具链
+RUN apk add --no-cache curl
 
-# 复制 package 文件，只安装生产依赖
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# 从构建阶段复制编译产物
+# 从构建阶段复制生产依赖与编译产物，避免运行阶段再次执行 npm ci 联网安装原生模块
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY package.json ./
 
 # 创建数据目录（挂载点）
 RUN mkdir -p /app/data

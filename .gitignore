@@ -10,6 +10,10 @@ server/dist/
 server/.env
 .env
 
+# 和风天气 JWT 私钥（严禁提交到仓库）
+secrets/
+*ed25519-private.pem
+
 # 本地数据库与运行数据
 server/data/
 

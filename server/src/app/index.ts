@@ -98,8 +98,27 @@ server.once('listening', () => {
   logger.info(`服务已启动`, { port: config.port });
   logger.info(`API 地址: http://localhost:${config.port}`);
 
-  if (!config.qweatherApiKey || config.qweatherApiKey === 'your_qweather_api_key_here') {
-    logger.warn('⚠ 未配置和风天气 API Key，请在 server/.env 中设置 QWEATHER_API_KEY');
+  const missingJwtKeys: string[] = [];
+
+  if (!config.qweatherJwtCredentialId) {
+    missingJwtKeys.push('QWEATHER_JWT_CREDENTIAL_ID');
+  }
+
+  if (!config.qweatherJwtProjectId) {
+    missingJwtKeys.push('QWEATHER_JWT_PROJECT_ID');
+  }
+
+  if (!config.qweatherJwtDeveloperId) {
+    missingJwtKeys.push('QWEATHER_JWT_DEVELOPER_ID');
+  }
+
+  if (!config.qweatherJwtPrivateKey && !config.qweatherJwtPrivateKeyPath) {
+    missingJwtKeys.push('QWEATHER_JWT_PRIVATE_KEY 或 QWEATHER_JWT_PRIVATE_KEY_PATH');
+  }
+
+  if (missingJwtKeys.length > 0) {
+    logger.warn(`⚠ 和风天气 JWT 认证配置不完整，缺少：${missingJwtKeys.join('、')}`);
+    logger.warn('请参考 server/.env.example 或 .env.docker 完成 Ed25519 凭据配置');
   }
 
   if (!config.qweatherApiHost) {

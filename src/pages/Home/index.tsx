@@ -874,36 +874,84 @@ function buildHeroMetrics(homeData: HomeData): HeroMetric[] {
   ];
 }
 
-/**
- * 转换近 7 天趋势数据
- * @param statsDetail 统计详情
- * @param dailyForecast 7 天天气预报
- * @returns 近 7 天趋势
- */
-function buildRecentSevenSeries(
-  statsDetail: StatsDetailData | null,
-  dailyForecast: DailyItem[]
-): Array<{
+/** 趋势图数据点 */
+interface TrendSeriesPoint {
+  /** 日期键（YYYY-MM-DD），用于历史与预报数据去重 */
+  dateKey: string;
+  /** X 轴展示标签（MM-DD） */
   dateLabel: string;
+  /** 当日最高温度 */
   maxTemp: number;
+  /** 当日最低温度 */
   minTemp: number;
+  /** 当日降水量 */
   precipitation: number;
-}> {
-  if (statsDetail && statsDetail.daily30.length > 0) {
-    return statsDetail.daily30.slice(-7).map((item) => ({
+  /** 是否为预报数据 */
+  isForecast: boolean;
+}
+
+/**
+ * 生成 UTC+8 时区的日期键
+ * @param date 日期对象
+ * @returns YYYY-MM-DD 格式日期键
+ * @description 统一使用项目默认时区，避免容器与浏览器时区差异导致日期错位
+ */
+function buildDateKey(date: Date): string {
+  const utc8Date = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+  const year = utc8Date.getUTCFullYear();
+  const month = `${utc8Date.getUTCMonth() + 1}`.padStart(2, '0');
+  const day = `${utc8Date.getUTCDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * 构建「过去 7 天 + 未来 7 天」趋势数据
+ * @param statsDetail 统计数据（含近 30 天日级实测）
+ * @param dailyForecast 未来 7 天天气预报
+ * @param now 当前时间
+ * @returns 按日期升序排列的趋势数据点
+ * @description 历史部分取统计中早于今天的最近 7 天，预报部分取今天及之后的最多 7 天；同日数据以预报为准
+ */
+function buildTrendSeries(
+  statsDetail: StatsDetailData | null,
+  dailyForecast: DailyItem[],
+  now: Date
+): TrendSeriesPoint[] {
+  const todayKey = buildDateKey(now);
+
+  const historyPoints: TrendSeriesPoint[] = (statsDetail?.daily30 ?? [])
+    .filter((item) => item.statDate < todayKey)
+    .slice(-7)
+    .map((item) => ({
+      dateKey: item.statDate,
       dateLabel: item.statDate.slice(5),
       maxTemp: item.maxTemp,
       minTemp: item.minTemp,
       precipitation: item.precipitation,
+      isForecast: false,
     }));
-  }
 
-  return dailyForecast.slice(0, 7).map((item) => ({
-    dateLabel: item.fxDate.slice(5),
-    maxTemp: toNumber(item.tempMax),
-    minTemp: toNumber(item.tempMin),
-    precipitation: toNumber(item.precip),
-  }));
+  const forecastPoints: TrendSeriesPoint[] = dailyForecast
+    .filter((item) => item.fxDate >= todayKey)
+    .slice(0, 7)
+    .map((item) => ({
+      dateKey: item.fxDate,
+      dateLabel: item.fxDate.slice(5),
+      maxTemp: toNumber(item.tempMax),
+      minTemp: toNumber(item.tempMin),
+      precipitation: toNumber(item.precip),
+      isForecast: true,
+    }));
+
+  // 同一天同时存在实测与预报时，以预报为准，避免出现重复刻度
+  const mergedMap = new Map<string, TrendSeriesPoint>();
+  [...historyPoints, ...forecastPoints].forEach((point) => {
+    mergedMap.set(point.dateKey, point);
+  });
+
+  return Array.from(mergedMap.values()).sort((prev, current) =>
+    prev.dateKey.localeCompare(current.dateKey)
+  );
 }
 
 /**
@@ -1044,8 +1092,9 @@ function buildHourlyChartOption(hourlyData: HomeData['hourly']): EChartsOption {
     yAxis: [
       {
         type: 'value',
-        min: Math.max(0, Math.min(...sampled.map((item) => toNumber(item.temp))) - 4),
-        max: Math.max(...sampled.map((item) => toNumber(item.temp))) + 6,
+        // 温度轴按实际温度区间自适应，不再强制从 0 开始，避免负温被裁掉
+        min: Math.floor(Math.min(...sampled.map((item) => toNumber(item.temp))) - 4),
+        max: Math.ceil(Math.max(...sampled.map((item) => toNumber(item.temp))) + 6),
         splitNumber: 4,
         axisLabel: {
           color: '#65889a',
@@ -1225,13 +1274,32 @@ function buildAirChartOption(airHourly: AirHourlyItem[]): EChartsOption {
 }
 
 /**
- * 构建温度趋势图配置
- * @param series 近 7 天数据
- * @returns ECharts 配置
+ * 计算未来预报在趋势图中的起止刻度
+ * @param series 趋势数据
+ * @returns 起止标签；无预报数据时返回 null
  */
-function buildTemperatureTrendOption(
-  series: ReturnType<typeof buildRecentSevenSeries>
-): EChartsOption {
+function getForecastRange(
+  series: TrendSeriesPoint[]
+): { start: string; end: string } | null {
+  const firstForecast = series.find((item) => item.isForecast);
+  const lastPoint = series[series.length - 1];
+
+  if (!firstForecast || !lastPoint) {
+    return null;
+  }
+
+  return { start: firstForecast.dateLabel, end: lastPoint.dateLabel };
+}
+
+/**
+ * 构建温度趋势图配置
+ * @param series 过去 7 天 + 未来 7 天数据
+ * @returns ECharts 配置
+ * @description 实测点为实心圆，预报点为空心圆，并以浅色区域标注未来预报区间
+ */
+function buildTemperatureTrendOption(series: TrendSeriesPoint[]): EChartsOption {
+  const forecastRange = getForecastRange(series);
+
   return {
     animationDuration: 400,
     tooltip: {
@@ -1269,7 +1337,9 @@ function buildTemperatureTrendOption(
       },
       axisLabel: {
         color: '#82a8b9',
-        fontSize: 10,
+        fontSize: 9,
+        interval: 0,
+        hideOverlap: true,
       },
       axisTick: {
         show: false,
@@ -1295,7 +1365,34 @@ function buildTemperatureTrendOption(
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        data: series.map((item) => item.maxTemp),
+        data: series.map((item) =>
+          item.isForecast
+            ? {
+                value: item.maxTemp,
+                itemStyle: {
+                  color: 'transparent',
+                  borderColor: '#ffb137',
+                  borderWidth: 2,
+                },
+              }
+            : item.maxTemp
+        ),
+        markArea: forecastRange
+          ? {
+              silent: true,
+              itemStyle: {
+                color: 'rgba(95, 210, 240, 0.08)',
+              },
+              label: {
+                show: true,
+                position: 'insideTop',
+                formatter: '未来预报',
+                color: '#7ea3b5',
+                fontSize: 9,
+              },
+              data: [[{ xAxis: forecastRange.start }, { xAxis: forecastRange.end }]],
+            }
+          : undefined,
         lineStyle: {
           color: '#ffb137',
           width: 2,
@@ -1310,7 +1407,18 @@ function buildTemperatureTrendOption(
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        data: series.map((item) => item.minTemp),
+        data: series.map((item) =>
+          item.isForecast
+            ? {
+                value: item.minTemp,
+                itemStyle: {
+                  color: 'transparent',
+                  borderColor: '#7dd4d5',
+                  borderWidth: 2,
+                },
+              }
+            : item.minTemp
+        ),
         lineStyle: {
           color: '#7dd4d5',
           width: 2,
@@ -1325,12 +1433,13 @@ function buildTemperatureTrendOption(
 
 /**
  * 构建降水趋势图配置
- * @param series 近 7 天数据
+ * @param series 过去 7 天 + 未来 7 天数据
  * @returns ECharts 配置
+ * @description 实测柱体使用实色渐变，预报柱体使用半透明描边，并以浅色区域标注未来预报区间
  */
-function buildPrecipitationTrendOption(
-  series: ReturnType<typeof buildRecentSevenSeries>
-): EChartsOption {
+function buildPrecipitationTrendOption(series: TrendSeriesPoint[]): EChartsOption {
+  const forecastRange = getForecastRange(series);
+
   return {
     animationDuration: 400,
     tooltip: {
@@ -1357,7 +1466,9 @@ function buildPrecipitationTrendOption(
       },
       axisLabel: {
         color: '#82a8b9',
-        fontSize: 10,
+        fontSize: 9,
+        interval: 0,
+        hideOverlap: true,
       },
       axisTick: {
         show: false,
@@ -1380,7 +1491,36 @@ function buildPrecipitationTrendOption(
       {
         type: 'bar',
         barWidth: 18,
-        data: series.map((item) => item.precipitation),
+        data: series.map((item) =>
+          item.isForecast
+            ? {
+                value: item.precipitation,
+                itemStyle: {
+                  color: 'rgba(109, 209, 239, 0.22)',
+                  borderColor: '#6dd1ef',
+                  borderWidth: 1,
+                  borderType: 'dashed',
+                  borderRadius: [6, 6, 0, 0],
+                },
+              }
+            : item.precipitation
+        ),
+        markArea: forecastRange
+          ? {
+              silent: true,
+              itemStyle: {
+                color: 'rgba(95, 210, 240, 0.08)',
+              },
+              label: {
+                show: true,
+                position: 'insideTop',
+                formatter: '未来预报',
+                color: '#7ea3b5',
+                fontSize: 9,
+              },
+              data: [[{ xAxis: forecastRange.start }, { xAxis: forecastRange.end }]],
+            }
+          : undefined,
         itemStyle: {
           borderRadius: [6, 6, 0, 0],
           color: {
@@ -1656,7 +1796,7 @@ export default function Home(): JSX.Element {
     const weatherRatioSummary = getDisplayWeatherRatioSummary(homeData);
     const weatherRatiosAll = weatherRatioSummary.items;
     const weatherRatios = weatherRatiosAll.slice(0, 4);
-    const recentSevenSeries = buildRecentSevenSeries(statsDetail, homeData.daily);
+    const trendSeries = buildTrendSeries(statsDetail, homeData.daily, now);
     const highlightSummary = buildMonthlyHighlights(statsDetail, homeData.daily);
     const hourlySample = sampleItems(homeData.hourly, 12);
     const displayMonthlyPrecipitation = getDisplayMonthlyPrecipitation(homeData);
@@ -1673,7 +1813,7 @@ export default function Home(): JSX.Element {
       weatherRatioSummary,
       weatherRatios,
       weatherRatiosAll,
-      recentSevenSeries,
+      trendSeries,
       highlightSummary,
       monthlyHighlights: highlightSummary.items,
       hourlySample,
@@ -2103,21 +2243,21 @@ export default function Home(): JSX.Element {
         <section className="weather-home__bottom-grid">
           <section className="weather-home__panel weather-home__panel--bottom">
             <div className="weather-home__panel-head">
-              <h2>近 7 天温度趋势</h2>
+              <h2>过去 7 天 + 未来 7 天温度趋势</h2>
               <span>单位: °C</span>
             </div>
             <div className="weather-home__bottom-chart">
-              <DashboardChart option={buildTemperatureTrendOption(viewModel.recentSevenSeries)} />
+              <DashboardChart option={buildTemperatureTrendOption(viewModel.trendSeries)} />
             </div>
           </section>
 
           <section className="weather-home__panel weather-home__panel--bottom">
             <div className="weather-home__panel-head">
-              <h2>近 7 天降水趋势</h2>
+              <h2>过去 7 天 + 未来 7 天降水趋势</h2>
               <span>单位: mm</span>
             </div>
             <div className="weather-home__bottom-chart">
-              <DashboardChart option={buildPrecipitationTrendOption(viewModel.recentSevenSeries)} />
+              <DashboardChart option={buildPrecipitationTrendOption(viewModel.trendSeries)} />
             </div>
           </section>
 

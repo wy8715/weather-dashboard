@@ -5,6 +5,7 @@
 
 import { config } from '../../app/config';
 import { logger } from '../../utils/logger';
+import { getQWeatherJwt } from './jwt';
 import type {
   QWeatherAlertItem,
   QWeatherAirHourlyItem,
@@ -103,28 +104,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * @param pathname 接口路径
  * @param params 查询参数
  * @returns 完整请求地址
- * @throws 当未配置 API Host 或 API Key 时抛出异常
+ * @throws 当未配置 API Host 时抛出异常
+ * @description JWT 认证通过请求头传递，地址中不再携带 API Key
  */
 function buildRequestUrl(pathname: string, params: RequestParams): string {
   if (!config.qweatherApiHost) {
     throw new Error('未配置 QWEATHER_API_HOST，请在 server/.env 中填写和风控制台分配的专属 API Host');
   }
 
-  if (!config.qweatherApiKey) {
-    throw new Error('未配置 QWEATHER_API_KEY，请在 server/.env 中填写和风天气 API Key');
-  }
-
-  const searchParams = new URLSearchParams({ key: config.qweatherApiKey, ...params });
-  return `https://${config.qweatherApiHost}${pathname}?${searchParams.toString()}`;
-}
-
-/**
- * 脱敏 URL，避免日志输出敏感 Key
- * @param url 原始 URL
- * @returns 脱敏后的 URL
- */
-function maskUrl(url: string): string {
-  return url.replace(config.qweatherApiKey, '***');
+  const searchParams = new URLSearchParams(params);
+  const query = searchParams.toString();
+  return `https://${config.qweatherApiHost}${pathname}${query ? `?${query}` : ''}`;
 }
 
 /**
@@ -181,7 +171,7 @@ function getHttpErrorMessage(status: number, body: unknown): string {
   }
 
   if (status === 401) {
-    return '和风天气 API 鉴权失败，请检查 QWEATHER_API_KEY 是否有效';
+    return '和风天气 JWT 鉴权失败，请检查凭据 ID、项目 ID、开发者 ID 与私钥是否匹配，并确认服务器时间准确';
   }
 
   return fallback;
@@ -224,15 +214,23 @@ function getBodyField<T>(body: unknown, key: string): T {
  * @param pathname 接口路径
  * @param params 查询参数
  * @returns 响应体
- * @throws 当网络、超时或业务失败时抛出异常
+ * @throws 当 JWT 生成失败、网络超时或业务失败时抛出异常
+ * @description 统一使用 JWT 作为请求头认证方式，Token 由 jwt 模块缓存复用
  */
 async function qweatherRequest(pathname: string, params: RequestParams): Promise<unknown> {
   const url = buildRequestUrl(pathname, params);
+  const token = getQWeatherJwt();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
     const body = await readJson(response);
 
     if (!response.ok) {
@@ -241,7 +239,7 @@ async function qweatherRequest(pathname: string, params: RequestParams): Promise
 
     const businessError = getBusinessErrorMessage(body);
     if (businessError) {
-      logger.error('和风天气 API 返回业务错误', { url: maskUrl(url), body });
+      logger.error('和风天气 API 返回业务错误', { url, body });
       throw new Error(businessError);
     }
 

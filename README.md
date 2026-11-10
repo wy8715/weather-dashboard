@@ -91,8 +91,11 @@ npm install
 在 `server` 目录下基于 `.env.example` 创建 `.env`：
 
 ```env
-QWEATHER_API_KEY=your_qweather_api_key_here
 QWEATHER_API_HOST=your-api-host.example.com
+QWEATHER_JWT_CREDENTIAL_ID=your_jwt_credential_id
+QWEATHER_JWT_PROJECT_ID=your_project_id
+QWEATHER_JWT_DEVELOPER_ID=Qyour_developer_id
+QWEATHER_JWT_PRIVATE_KEY_PATH=./secrets/ed25519-private.pem
 PORT=3201
 DEFAULT_LOCATION_ID=101020100
 DEFAULT_CITY_NAME=上海
@@ -101,22 +104,35 @@ LOG_LEVEL=info
 SNAPSHOT_RETENTION_DAYS=90
 ```
 
-和风天气配置说明：
+和风天气 JWT 配置说明：
 
-- `QWEATHER_API_KEY`：和风天气项目下创建的 `API KEY` 凭据
-- `QWEATHER_API_HOST`：和风天气分配给当前凭据的专属 `API Host`，不要带 `https://`
-- 如果还没有账号或凭据，可按以下顺序处理：
-  - 进入 [和风天气开发者平台](https://dev.qweather.com/)
-  - 阅读 [开始使用](https://dev.qweather.com/docs/start/)
-  - 在控制台按 [项目和凭据](https://dev.qweather.com/docs/configuration/project-and-key/) 创建项目并添加 `API KEY`
-  - 按 [身份认证](https://dev.qweather.com/docs/configuration/authentication/) 确认凭据类型，并获取对应 `API Host`
+- 和风天气已推荐使用 `JWT` 作为身份认证方式，本项目统一通过 `Ed25519` 私钥签名生成 JWT，并在服务端缓存复用
+- `QWEATHER_JWT_CREDENTIAL_ID`：控制台创建 JWT 凭据后显示的凭据 ID，对应 JWT Header 的 `kid`
+- `QWEATHER_JWT_PROJECT_ID`：凭据所属项目 ID，对应 JWT Payload 的 `sub`
+- `QWEATHER_JWT_DEVELOPER_ID`：控制台设置中的开发者 ID（以 `Q` 开头），对应 JWT Payload 的 `iss`
+- `QWEATHER_JWT_PRIVATE_KEY_PATH`：Ed25519 私钥文件路径，推荐使用该方式；也可通过 `QWEATHER_JWT_PRIVATE_KEY` 直接提供 PEM 内容（换行用 `\n` 表示）
+- `QWEATHER_API_HOST`：和风天气分配给当前项目的专属 `API Host`，不要带 `https://`
+
+JWT 凭据配置步骤：
+
+```bash
+# 1. 生成 Ed25519 密钥对
+openssl genpkey -algorithm ED25519 -out ed25519-private.pem
+openssl pkey -pubout -in ed25519-private.pem > ed25519-public.pem
+```
+
+1. 进入 [和风天气开发者平台](https://dev.qweather.com/) 并阅读 [身份认证文档](https://dev.qweather.com/docs/configuration/authentication/)
+2. 在 [控制台-项目管理](https://console.qweather.com/project) 创建项目，添加凭据时选择 `JSON Web Token`
+3. 将 `ed25519-public.pem` 的公钥内容完整粘贴到控制台并保存
+4. 记录凭据 ID、项目 ID，并在 [控制台-设置](https://console.qweather.com/setting) 查看开发者 ID
+5. 将 `ed25519-private.pem` 放到 `server/secrets/` 目录（该目录已被 `.gitignore` 忽略），并配置 `QWEATHER_JWT_PRIVATE_KEY_PATH`
 
 说明：
 
 - 前端默认地址：`http://localhost:3200`
 - 后端默认地址：`http://localhost:3201`
 - 前端通过 `/api` 代理到后端
-- 所有和风天气密钥必须通过环境变量提供，不能写入源码
+- 所有和风天气密钥必须通过环境变量或私钥文件提供，不能写入源码
 
 ### 3. 启动开发环境
 
@@ -148,6 +164,29 @@ npm run build
 ```bash
 npm run server:build
 ```
+
+## Docker 部署
+
+1. 生成 Ed25519 密钥对，并将公钥上传到和风天气控制台
+2. 将私钥放到项目根目录的 `secrets/ed25519-private.pem`（该目录已被 `.gitignore` 忽略）
+3. 复制环境变量模板并填写真实配置：
+
+```bash
+cp .env.docker .env
+```
+
+4. 启动服务：
+
+```bash
+docker compose up -d
+```
+
+环境变量说明：
+
+- `QWEATHER_JWT_CREDENTIAL_ID`、`QWEATHER_JWT_PROJECT_ID`、`QWEATHER_JWT_DEVELOPER_ID`：JWT 凭据信息
+- `QWEATHER_API_HOST`：和风天气专属 API Host
+- `QWEATHER_JWT_PRIVATE_KEY_HOST_PATH`：宿主机私钥路径，默认 `./secrets/ed25519-private.pem`
+- 私钥会以只读方式挂载到后端容器的 `/run/secrets/qweather-jwt-private.pem`，不会打进镜像
 
 ## 页面说明
 
